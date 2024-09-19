@@ -6,7 +6,8 @@ import (
 
 func main() {
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir(".")))
+	mux.Handle("/app/", http.StripPrefix("/app", http.FileServer(http.Dir("."))))
+	mux.HandleFunc("/healthz", myHandler)
 
 	server := &http.Server{
 		Handler: mux,
@@ -14,4 +15,10 @@ func main() {
 	}
 
 	server.ListenAndServe()
+}
+
+func myHandler(response http.ResponseWriter, request *http.Request) {
+	response.Header().Add("Content-Type", "text/plain; charset=utf-8")
+	response.WriteHeader(200)
+	response.Write([]byte("OK"))
 }
