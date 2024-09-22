@@ -50,62 +50,22 @@ func (cfg *ApiConfig) resetHits(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (cfg *ApiConfig) validateChirp(w http.ResponseWriter, r *http.Request) {
-	type chirp struct {
+	var chirpMsg struct {
 		Body string `json:"body"`
 	}
-	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 
-	chirpDecoder := json.NewDecoder(r.Body)
-	chirpMsg := chirp{}
-
-	err := chirpDecoder.Decode(&chirpMsg)
-	if err != nil {
-		// an error will be thrown if the JSON is invalid or has the wrong types
-		// any missing fields will simply have their values in the struct set to their zero value
-		errMessage := ErrorResponse{Error: "Something went wrong"}
-
-		resp, errMarshal := json.Marshal(errMessage)
-		if errMarshal != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte{})
-			return
-		}
-
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(resp)
+	if err := json.NewDecoder(r.Body).Decode(&chirpMsg); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
 		return
 	}
 
-	// Too long
 	if len(chirpMsg.Body) > int(cfg.chirpMaxSize) {
-		tooLongError := ErrorResponse{Error: "Chirp is too long"}
-
-		resp, errMarshal := json.Marshal(tooLongError)
-		if errMarshal != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte{})
-			return
-		}
-
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(resp)
+		respondWithError(w, http.StatusBadRequest, "Chirp is too long")
 		return
-	} else {
-		//check for profane
-		response := checkProfane(chirpMsg.Body)
-
-		resp, errMarshal := json.Marshal(response)
-		if errMarshal != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte{})
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write(resp)
 	}
+
+	cleanResponse := checkProfane(chirpMsg.Body)
+	respondWithJSON(w, http.StatusOK, cleanResponse)
 }
 
 func checkProfane(message string) CleanResponse {
@@ -124,4 +84,19 @@ func checkProfane(message string) CleanResponse {
 	}
 
 	return CleanResponse{CleanedBody: cleanedMessage}
+}
+
+func respondWithError(w http.ResponseWriter, status int, message string) {
+	resp := ErrorResponse{Error: message}
+	respondWithJSON(w, status, resp)
+}
+
+func respondWithJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		log.Printf("Error marshalling JSON: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
