@@ -7,6 +7,7 @@ import (
 
 func main() {
 	apiConfig := new(ApiConfig)
+	apiConfig.chirpMaxSize = 140
 	mux := http.NewServeMux()
 
 	fileServerHandler := http.StripPrefix("/app", http.FileServer(http.Dir(".")))
@@ -23,9 +24,10 @@ func main() {
 }
 
 func registerRoutes(mux *http.ServeMux, apiConfig *ApiConfig) {
-	mux.HandleFunc("/healthz", healthzHandler)    // Health check
-	mux.HandleFunc("/metrics", apiConfig.getHits) // Metrics endpoint
-	mux.HandleFunc("/reset", apiConfig.resetHits) // Reset hits counter
+	mux.HandleFunc("GET /admin/metrics", apiConfig.getHits)             // Metrics endpoint
+	mux.HandleFunc("GET /api/healthz", healthzHandler)                  // Health check
+	mux.HandleFunc("GET /api/reset", apiConfig.resetHits)               // Reset hits counter
+	mux.HandleFunc("POST /api/validate_chirp", apiConfig.validateChirp) // Check if chirp is valid
 }
 
 func healthzHandler(w http.ResponseWriter, r *http.Request) {
