@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
+
+var profaneWords = []string{"kerfuffle", "sharbert", "fornax"}
 
 type ApiConfig struct {
 	fileserverHits int
@@ -16,8 +19,8 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
-type ValidResponse struct {
-	Valid bool `json:"valid"`
+type CleanResponse struct {
+	CleanedBody string `json:"cleaned_body"`
 }
 
 func (cfg *ApiConfig) incrementHits(next http.Handler) http.Handler {
@@ -90,8 +93,10 @@ func (cfg *ApiConfig) validateChirp(w http.ResponseWriter, r *http.Request) {
 		w.Write(resp)
 		return
 	} else {
-		validResponse := ValidResponse{Valid: true}
-		resp, errMarshal := json.Marshal(validResponse)
+		//check for profane
+		response := checkProfane(chirpMsg.Body)
+
+		resp, errMarshal := json.Marshal(response)
 		if errMarshal != nil {
 			log.Printf("Error marshalling JSON: %s", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -101,5 +106,22 @@ func (cfg *ApiConfig) validateChirp(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(resp)
 	}
+}
 
+func checkProfane(message string) CleanResponse {
+	cleanedMessage := message
+
+	words := strings.Fields(cleanedMessage)
+
+	for _, badWord := range profaneWords {
+		for _, word := range words {
+			// Check if the lowercased word matches the bad word
+			if strings.EqualFold(word, badWord) {
+				// Replace the bad word with "****" in the cleaned message
+				cleanedMessage = strings.ReplaceAll(cleanedMessage, word, "****")
+			}
+		}
+	}
+
+	return CleanResponse{CleanedBody: cleanedMessage}
 }
