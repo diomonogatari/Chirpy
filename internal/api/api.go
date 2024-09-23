@@ -1,29 +1,40 @@
-package main
+package api
 
 import (
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
+
+	"github.com/diomonogatari/Chirpy/internal/database"
 )
 
 var profaneWords = []string{"kerfuffle", "sharbert", "fornax"}
 
 type ApiConfig struct {
-	fileserverHits int
 	chirpMaxSize   uint
+	fileserverHits int
+	db             *database.DB
+}
+
+func NewApiConfig(maxChirpSize uint, dbconn string) (*ApiConfig, error) {
+	db, err := database.NewDB(dbconn)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := &ApiConfig{db: db, chirpMaxSize: maxChirpSize, fileserverHits: 0}
+	return cfg, nil
 }
 
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
-type CleanResponse struct {
-	CleanedBody string `json:"cleaned_body"`
-}
-
-func (cfg *ApiConfig) incrementHits(next http.Handler) http.Handler {
+func (cfg *ApiConfig) IncrementHits(next http.Handler) http.Handler {
 	incr := func(w http.ResponseWriter, r *http.Request) {
 		cfg.fileserverHits++
 
@@ -33,7 +44,7 @@ func (cfg *ApiConfig) incrementHits(next http.Handler) http.Handler {
 	return http.HandlerFunc(incr)
 }
 
-func (cfg *ApiConfig) getHits(w http.ResponseWriter, r *http.Request) {
+func (cfg *ApiConfig) GetHits(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(200)
 	w.Write([]byte(getCount(cfg)))
@@ -43,13 +54,13 @@ func getCount(cfg *ApiConfig) string {
 	return fmt.Sprintf("<html><body><h1>Welcome, Chirpy Admin</h1><p>Chirpy has been visited %d times!</p></body></html>", cfg.fileserverHits)
 }
 
-func (cfg *ApiConfig) resetHits(w http.ResponseWriter, _ *http.Request) {
+func (cfg *ApiConfig) ResetHits(w http.ResponseWriter, _ *http.Request) {
 	cfg.fileserverHits = 0
 	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(200)
 }
 
-func (cfg *ApiConfig) validateChirp(w http.ResponseWriter, r *http.Request) {
+func (cfg *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 	var chirpMsg struct {
 		Body string `json:"body"`
 	}
@@ -64,14 +75,46 @@ func (cfg *ApiConfig) validateChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cleanResponse := checkProfane(chirpMsg.Body)
-	respondWithJSON(w, http.StatusOK, cleanResponse)
+	savedChirp, err := cfg.db.CreateChirp(checkProfane(chirpMsg.Body))
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Chirp is too long")
+	}
+
+	respondWithJSON(w, http.StatusCreated, savedChirp)
 }
 
-func checkProfane(message string) CleanResponse {
+func (cfg *ApiConfig) GetChirp(w http.ResponseWriter, r *http.Request) {
+
+	requestedId, atoiErr := strconv.Atoi(r.PathValue("chirpID"))
+	if atoiErr != nil {
+		respondWithError(w, http.StatusInternalServerError, atoiErr.Error())
+		return
+	}
+
+	chirp, err := cfg.db.GetChirp(requestedId)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, chirp)
+}
+
+func (cfg *ApiConfig) GetChirps(w http.ResponseWriter, _ *http.Request) {
+	chirps, err := cfg.db.GetChirps()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+	}
+
+	respondWithJSON(w, http.StatusOK, chirps)
+}
+
+func checkProfane(message string) string {
 	cleanedMessage := message
 
-	words := strings.Fields(cleanedMessage)
+	// Regular expression to match words, ignoring punctuation
+	re := regexp.MustCompile(`[^\w]+`) // Matches one or more non-word characters
+	words := re.Split(cleanedMessage, -1)
 
 	for _, badWord := range profaneWords {
 		for _, word := range words {
@@ -79,11 +122,12 @@ func checkProfane(message string) CleanResponse {
 			if strings.EqualFold(word, badWord) {
 				// Replace the bad word with "****" in the cleaned message
 				cleanedMessage = strings.ReplaceAll(cleanedMessage, word, "****")
+				break
 			}
 		}
 	}
 
-	return CleanResponse{CleanedBody: cleanedMessage}
+	return cleanedMessage
 }
 
 func respondWithError(w http.ResponseWriter, status int, message string) {
