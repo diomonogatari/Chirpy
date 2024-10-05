@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/diomonogatari/Chirpy/internal/database"
@@ -17,16 +16,12 @@ var profaneWords = []string{"kerfuffle", "sharbert", "fornax"}
 type ApiConfig struct {
 	chirpMaxSize   uint
 	fileserverHits int
-	db             *database.DB
+	db             *database.Queries
 }
 
-func NewApiConfig(maxChirpSize uint, dbconn string) (*ApiConfig, error) {
-	db, err := database.NewDB(dbconn)
-	if err != nil {
-		return nil, err
-	}
+func NewApiConfig(maxChirpSize uint, queries *database.Queries) (*ApiConfig, error) {
 
-	cfg := &ApiConfig{db: db, chirpMaxSize: maxChirpSize, fileserverHits: 0}
+	cfg := &ApiConfig{chirpMaxSize: maxChirpSize, fileserverHits: 0, db: queries}
 	return cfg, nil
 }
 
@@ -75,38 +70,38 @@ func (cfg *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	savedChirp, err := cfg.db.CreateChirp(checkProfane(chirpMsg.Body))
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Chirp is too long")
-	}
+	// savedChirp, err := cfg.db.CreateChirp(checkProfane(chirpMsg.Body))
+	// if err != nil {
+	// 	respondWithError(w, http.StatusInternalServerError, "Chirp is too long")
+	// }
 
-	respondWithJSON(w, http.StatusCreated, savedChirp)
+	// respondWithJSON(w, http.StatusCreated, savedChirp)
 }
 
 func (cfg *ApiConfig) GetChirp(w http.ResponseWriter, r *http.Request) {
 
-	requestedId, atoiErr := strconv.Atoi(r.PathValue("chirpID"))
-	if atoiErr != nil {
-		respondWithError(w, http.StatusInternalServerError, atoiErr.Error())
-		return
-	}
+	// requestedId, atoiErr := strconv.Atoi(r.PathValue("chirpID"))
+	// if atoiErr != nil {
+	// 	respondWithError(w, http.StatusInternalServerError, atoiErr.Error())
+	// 	return
+	// }
 
-	chirp, err := cfg.db.GetChirp(requestedId)
-	if err != nil {
-		respondWithError(w, http.StatusNotFound, err.Error())
-		return
-	}
+	// chirp, err := cfg.db.GetChirp(requestedId)
+	// if err != nil {
+	// 	respondWithError(w, http.StatusNotFound, err.Error())
+	// 	return
+	// }
 
-	respondWithJSON(w, http.StatusOK, chirp)
+	// respondWithJSON(w, http.StatusOK, chirp)
 }
 
 func (cfg *ApiConfig) GetChirps(w http.ResponseWriter, _ *http.Request) {
-	chirps, err := cfg.db.GetChirps()
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-	}
+	// chirps, err := cfg.db.GetChirps()
+	// if err != nil {
+	// 	respondWithError(w, http.StatusInternalServerError, err.Error())
+	// }
 
-	respondWithJSON(w, http.StatusOK, chirps)
+	// respondWithJSON(w, http.StatusOK, chirps)
 }
 
 func checkProfane(message string) string {
