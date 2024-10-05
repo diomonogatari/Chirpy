@@ -46,8 +46,9 @@ func main() {
 func registerRoutes(mux *http.ServeMux, apiConfig *api.ApiConfig) {
 	mux.HandleFunc("GET /admin/metrics", apiConfig.GetHits) // Metrics endpoint
 	mux.HandleFunc("GET /api/healthz", healthzHandler)      // Health check
-	mux.HandleFunc("GET /api/reset", apiConfig.ResetHits)   // Reset hits counter
+	mux.HandleFunc("POST /admin/reset", apiConfig.Reset)    // Reset hits counter
 	mux.HandleFunc("POST /api/chirps", apiConfig.PostChirp)
+	mux.HandleFunc("POST /api/users", apiConfig.CreateUser)
 	mux.HandleFunc("GET /api/chirps", apiConfig.GetChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiConfig.GetChirp)
 }
