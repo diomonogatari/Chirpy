@@ -28,3 +28,12 @@ func (q *Queries) CreateUser(ctx context.Context, email string) (User, error) {
 	)
 	return i, err
 }
+
+const truncateUsers = `-- name: TruncateUsers :exec
+TRUNCATE Table users
+`
+
+func (q *Queries) TruncateUsers(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, truncateUsers)
+	return err
+}
