@@ -1,16 +1,30 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
-	"path/filepath"
+	"os"
 
 	"github.com/diomonogatari/Chirpy/internal/api"
+	"github.com/diomonogatari/Chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 func main() {
-	absPath, _ := filepath.Abs("./internal/database/database.json")
-	apiConfig, err := api.NewApiConfig(140, absPath)
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
+	dbUrl := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbUrl)
+	if err != nil {
+		log.Fatalf("Error opening database: %v", err)
+	}
+
+	apiConfig, err := api.NewApiConfig(140, database.New(db))
 	if err != nil {
 		panic(err)
 	}
