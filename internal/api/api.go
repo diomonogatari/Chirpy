@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/diomonogatari/Chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 var profaneWords = []string{"kerfuffle", "sharbert", "fornax"}
@@ -110,7 +111,8 @@ func (cfg *ApiConfig) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 	var chirpMsg struct {
-		Body string `json:"body"`
+		Body   string    `json:"body"`
+		UserId uuid.UUID `json:"user_id"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&chirpMsg); err != nil {
@@ -122,13 +124,16 @@ func (cfg *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long")
 		return
 	}
+	chirpParams := database.CreateChirpParams{
+		Body:   checkProfane(chirpMsg.Body),
+		UserID: chirpMsg.UserId,
+	}
+	savedChirp, err := cfg.db.CreateChirp(r.Context(), chirpParams)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Chirp is too long")
+	}
 
-	// savedChirp, err := cfg.db.CreateChirp(checkProfane(chirpMsg.Body))
-	// if err != nil {
-	// 	respondWithError(w, http.StatusInternalServerError, "Chirp is too long")
-	// }
-
-	// respondWithJSON(w, http.StatusCreated, savedChirp)
+	respondWithJSON(w, http.StatusCreated, savedChirp)
 }
 
 func (cfg *ApiConfig) GetChirp(w http.ResponseWriter, r *http.Request) {
