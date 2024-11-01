@@ -6,8 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
-	"strings"
 
 	"github.com/diomonogatari/Chirpy/internal/database"
 	"github.com/google/uuid"
@@ -169,27 +167,6 @@ func (cfg *ApiConfig) GetChirps(w http.ResponseWriter, _ *http.Request) {
 	// }
 
 	// respondWithJSON(w, http.StatusOK, chirps)
-}
-
-func checkProfane(message string) string {
-	cleanedMessage := message
-
-	// Regular expression to match words, ignoring punctuation
-	re := regexp.MustCompile(`[^\w]+`) // Matches one or more non-word characters
-	words := re.Split(cleanedMessage, -1)
-
-	for _, badWord := range profaneWords {
-		for _, word := range words {
-			// Check if the lowercased word matches the bad word
-			if strings.EqualFold(word, badWord) {
-				// Replace the bad word with "****" in the cleaned message
-				cleanedMessage = strings.ReplaceAll(cleanedMessage, word, "****")
-				break
-			}
-		}
-	}
-
-	return cleanedMessage
 }
 
 func respondWithError(w http.ResponseWriter, status int, message string) {
