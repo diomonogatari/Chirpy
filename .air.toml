@@ -1,0 +1,7 @@
+# .air.toml
+[build]
+bin = "bin/main" # Binary output path
+cmd = "go build -o ./bin/main" # Build command
+include_ext = ["go", "tpl", "tmpl", "html"] # File extensions to watch
+exclude_dir = ["vendor", "bin"] # Directories to exclude from watching
+exclude_file = ["air.toml"] # Files to exclude from watching
