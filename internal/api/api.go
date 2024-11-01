@@ -129,42 +129,38 @@ func (cfg *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, "Chirp is too long")
 	}
 
-	// Map chirp to response object
-	chirp := Chirp{
-		ID:        savedChirp.ID,
-		CreatedAt: savedChirp.CreatedAt,
-		UpdatedAt: savedChirp.UpdatedAt,
-		Body:      savedChirp.Body,
-		UserID:    savedChirp.UserID,
-	}
-
-	respondWithJSON(w, http.StatusCreated, chirp)
+	respondWithJSON(w, http.StatusCreated, mapChirp(&savedChirp))
 }
 
 func (cfg *ApiConfig) GetChirp(w http.ResponseWriter, r *http.Request) {
 
-	// requestedId, atoiErr := strconv.Atoi(r.PathValue("chirpID"))
-	// if atoiErr != nil {
-	// 	respondWithError(w, http.StatusInternalServerError, atoiErr.Error())
-	// 	return
-	// }
+	uuidRequestedId, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid chirp ID")
+		return
+	}
 
-	// chirp, err := cfg.db.GetChirp(requestedId)
-	// if err != nil {
-	// 	respondWithError(w, http.StatusNotFound, err.Error())
-	// 	return
-	// }
+	chirp, err := cfg.db.GetChirp(r.Context(), uuidRequestedId)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, err.Error())
+		return
+	}
 
-	// respondWithJSON(w, http.StatusOK, chirp)
+	respondWithJSON(w, http.StatusOK, mapChirp(&chirp))
 }
 
-func (cfg *ApiConfig) GetChirps(w http.ResponseWriter, _ *http.Request) {
-	// chirps, err := cfg.db.GetChirps()
-	// if err != nil {
-	// 	respondWithError(w, http.StatusInternalServerError, err.Error())
-	// }
+func (cfg *ApiConfig) GetChirps(w http.ResponseWriter, r *http.Request) {
+	chirps, err := cfg.db.GetChirps(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+	}
 
-	// respondWithJSON(w, http.StatusOK, chirps)
+	responseChirps := make([]Chirp, 0)
+	for _, chirp := range chirps {
+		responseChirps = append(responseChirps, mapChirp(&chirp))
+	}
+
+	respondWithJSON(w, http.StatusOK, responseChirps)
 }
 
 func respondWithError(w http.ResponseWriter, status int, message string) {
@@ -179,5 +175,16 @@ func respondWithJSON(w http.ResponseWriter, status int, data interface{}) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Printf("Error marshalling JSON: %s", err)
 		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+// Map chirp to response object
+func mapChirp(savedChirp *database.Chirp) Chirp {
+	return Chirp{
+		ID:        savedChirp.ID,
+		CreatedAt: savedChirp.CreatedAt,
+		UpdatedAt: savedChirp.UpdatedAt,
+		Body:      savedChirp.Body,
+		UserID:    savedChirp.UserID,
 	}
 }
