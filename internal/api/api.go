@@ -11,8 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-var profaneWords = []string{"kerfuffle", "sharbert", "fornax"}
-
 type ApiConfig struct {
 	chirpMaxSize   uint
 	fileserverHits int
