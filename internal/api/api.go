@@ -60,7 +60,7 @@ func (cfg *ApiConfig) Reset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg.fileserverHits = 0
-	if err := cfg.db.TruncateUsers(r.Context()); err != nil {
+	if err := cfg.db.DeleteUsers(r.Context()); err != nil {
 		log.Printf("Error truncate the users table: %s", err)
 		w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -125,7 +125,7 @@ func (cfg *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	chirpParams := database.CreateChirpParams{
-		Body:   checkProfane(chirpMsg.Body),
+		Body:   chirpMsg.Body,
 		UserID: chirpMsg.UserId,
 	}
 	savedChirp, err := cfg.db.CreateChirp(r.Context(), chirpParams)
@@ -133,7 +133,16 @@ func (cfg *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, "Chirp is too long")
 	}
 
-	respondWithJSON(w, http.StatusCreated, savedChirp)
+	// Map chirp to response object
+	chirp := Chirp{
+		ID:        savedChirp.ID,
+		CreatedAt: savedChirp.CreatedAt,
+		UpdatedAt: savedChirp.UpdatedAt,
+		Body:      savedChirp.Body,
+		UserID:    savedChirp.UserID,
+	}
+
+	respondWithJSON(w, http.StatusCreated, chirp)
 }
 
 func (cfg *ApiConfig) GetChirp(w http.ResponseWriter, r *http.Request) {

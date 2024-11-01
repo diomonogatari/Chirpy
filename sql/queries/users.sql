@@ -5,5 +5,5 @@ VALUES (
 )
 RETURNING *;
 
--- name: TruncateUsers :exec
-TRUNCATE Table users;
+-- name: DeleteUsers :exec
+DELETE FROM users;
